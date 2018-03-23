@@ -195,6 +195,71 @@ interface ShipmentInterface extends ContentEntityInterface, EntityChangedInterfa
   public function removeItem(ShipmentItem $shipment_item);
 
   /**
+   * Gets the packages.
+   *
+   * @return \Drupal\commerce_shipping\Entity\PackageInterface[]
+   *   The packages.
+   */
+  public function getPackages();
+
+  /**
+   * Sets the packages.
+   *
+   * @param \Drupal\commerce_shipping\Entity\PackageInterface[] $packages
+   *   The packages.
+   *
+   * @return $this
+   */
+  public function setPackages(array $packages);
+
+  /**
+   * Gets whether the shipment has packages.
+   *
+   * @return bool
+   *   TRUE if the shipment has packages, FALSE otherwise.
+   */
+  public function hasPackages();
+
+
+  /**
+   * Checks whether the shipment has a given package.
+   *
+   * @param \Drupal\commerce_shipping\Entity\PackageInterface $package
+   *   The package.
+   *
+   * @return bool
+   *   TRUE if the package was found, FALSE otherwise.
+   */
+  public function hasPackage(PackageInterface $package);
+
+  /**
+   * Adds a package.
+   *
+   * @param \Drupal\commerce_shipping\Entity\PackageInterface $package
+   *   The package.
+   *
+   * @return $this
+   */
+  public function addPackage(PackageInterface $package);
+
+  /**
+   * Removes a package.
+   *
+   * @param \Drupal\commerce_shipping\Entity\PackageInterface $package
+   *   The package.
+   *
+   * @return $this
+   */
+  public function removePackage(PackageInterface $package);
+
+  /**
+   * Resets package information.
+   *
+   * @return $this
+   */
+  public function resetPackagingData();
+
+  /**
    * Gets the total declared value.
    *
    * Represents the sum of the declared values of all shipment items.

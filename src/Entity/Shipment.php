@@ -12,8 +12,10 @@ use Drupal\Core\Entity\EntityMalformedException;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\physical\Weight;
 use Drupal\profile\Entity\ProfileInterface;
+use Drupal\commerce_shipping\Entity\PackageInterface;
 
 /**
  * Defines the shipment entity class.
@@ -228,6 +230,79 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
   /**
    * {@inheritdoc}
    */
+  public function getPackages() {
+    return $this->get('packages')->referencedEntities();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setPackages(array $packages) {
+    $this->set('packages', $packages);
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function hasPackages() {
+    return !$this->get('packages')->isEmpty();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function hasPackage(PackageInterface $package) {
+    return $this->getPackageIndex($package) !== FALSE;
+  }
+
+  /**
+   * Gets the index of the given package.
+   *
+   * @param \Drupal\commerce_shipping\Entity\PackageInterface $package
+   *   The package.
+   *
+   * @return int|bool
+   *   The index of the given package, or FALSE if not found.
+   */
+  protected function getPackageIndex(PackageInterface $package) {
+    $values = $this->get('packages')->getValue();
+    $package_ids = array_map(function ($value) {
+      return $value['target_id'];
+    }, $values);
+
+    return array_search($package->id(), $package_ids);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function addPackage(PackageInterface $package) {
+    $this->get('packages')->appendItem($package);
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function removePackage(PackageInterface $package) {
+    $index = $this->getPackageIndex($package);
+    if ($index !== FALSE) {
+      $this->get('packages')->offsetUnset($index);
+    }
+    return $this;
+  }
+
+  public function resetPackagingData() {
+    $this->entityTypeManager()->getStorage('commerce_package')->delete($this->getPackages());
+    $this->setPackages([]);
+    $this->setData('unpackaged_items', $this->getItems());
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function getTotalDeclaredValue() {
     $total_declared_value = NULL;
     foreach ($this->getItems() as $item) {
@@ -365,6 +440,9 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
       $this->set('package_type', $default_package_type->getId());
     }
     $this->recalculateWeight();
+    if (!empty($this->getItems()) && $this->getData('unpackaged_items') === NULL) {
+      $this->setData('unpackaged_items', $this->getItems());
+    }
   }
 
   /**
@@ -477,6 +555,14 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
       ->setRequired(TRUE)
       ->setCardinality(BaseFieldDefinition::CARDINALITY_UNLIMITED)
       ->setDisplayConfigurable('form', FALSE)
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['packages'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Packages'))
+      ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
+      ->setDescription(t('The packages'))
+      ->setSetting('target_type', 'commerce_package')
+      ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
     $fields['weight'] = BaseFieldDefinition::create('physical_measurement')

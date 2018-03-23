@@ -38,6 +38,14 @@ interface ShippingMethodInterface extends ConfigurablePluginInterface, PluginFor
   public function getServices();
 
   /**
+   * Gets the shipment packager plugins that are enabled.
+   *
+   * @return \Drupal\commerce_shipping\Plugin\Commerce\ShipmentPackager\ShipmentPackagerInterface[]
+   *   The shipment packager plugins.
+   */
+  public function getPackagers();
+
+  /**
    * Calculates rates for the given shipment.
    *
    * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment
