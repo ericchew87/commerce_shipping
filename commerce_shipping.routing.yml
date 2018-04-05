@@ -29,3 +29,45 @@ entity.commerce_shipment_type.collection:
     _title: 'Shipment types'
   requirements:
     _permission: 'administer commerce_shipment_type'
+
+entity.commerce_shipment.add:
+  path: '/admin/commerce/orders/{commerce_order}/shipments/add'
+  defaults:
+    _title: 'Add shipment'
+    _controller: '\Drupal\commerce_shipping\Controller\ShipmentController::addPage'
+  options:
+    parameters:
+      commerce_order:
+        type: entity:commerce_order
+  requirements:
+    _permission: 'administer commerce_shipment_type'
+
+commerce_shipping.shipment_builder:
+  path: '/admin/commerce/orders/{order}/shipments/{shipment}/shipment-builder'
+  defaults:
+    _form: '\Drupal\commerce_shipping\Form\ShipmentBuilderForm'
+  requirements:
+    _permission: 'administer commerce_shipment_type'
+  options:
+    _admin_route: TRUE
+    parameters:
+      order:
+        type: entity:commerce_order
+      shipment:
+        type: entity:commerce_shipment
+
+commerce_shipping.move_shipment_item:
+  path: '/shipment_builder/move/{order}/{shipment_id}/{shipment_item_id}/{package_from}/{package_to}'
+  defaults:
+    _controller: '\Drupal\commerce_shipping\Controller\MoveShipmentItemController::moveItem'
+    shipment_id: null
+    shipment_item_id: null
+    package_from: null
+    package_to: null
+  requirements:
+    _permission: 'administer commerce_shipment_type'
+  options:
+    _admin_route: TRUE
+    parameters:
+      order:
+        type: entity:commerce_order

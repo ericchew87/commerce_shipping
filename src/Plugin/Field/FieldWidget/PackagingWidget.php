@@ -77,6 +77,9 @@ class PackagingWidget extends WidgetBase implements ContainerFactoryPluginInterf
     );
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state) {
     $package_types = $this->packageTypeManager->getDefinitions();
     $package_types = array_map(function ($package_type) {
@@ -220,7 +223,7 @@ class PackagingWidget extends WidgetBase implements ContainerFactoryPluginInterf
   }
 
   /**
-   * Make sure a rental period is not selected more than once.
+   * Make sure max is greater than min.
    *
    * @param array $form
    * @param \Drupal\Core\Form\FormStateInterface $form_state
@@ -234,6 +237,9 @@ class PackagingWidget extends WidgetBase implements ContainerFactoryPluginInterf
     }
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function massageFormValues(array $values, array $form, FormStateInterface $form_state) {
     uasort($values, function ($a, $b) {
       if (!empty($a['max']) && !empty($b['max'])) {

@@ -12,3 +12,8 @@ entity.commerce_shipment_type.edit_form:
   route_name: entity.commerce_shipment_type.edit_form
   base_route: entity.commerce_shipment_type.edit_form
   title: Edit
+
+entity.commerce_shipment.collection:
+  route_name: entity.commerce_shipment.collection
+  base_route: entity.commerce_order.canonical
+  title: Shipments

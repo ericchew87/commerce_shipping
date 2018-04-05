@@ -96,9 +96,15 @@ class Package extends ContentEntityBase implements PackageInterface {
    * {@inheritdoc}
    */
   public function removeItem(ShipmentItem $shipment_item) {
-    $this->get('items')->removeShipmentItem($shipment_item);
-    $this->recalculateWeight();
-    $this->recalculateDeclaredValue();
+    $items = $this->get('items');
+    foreach ($items as $key => $item) {
+      if ($item->value == $shipment_item) {
+        $items->removeItem($key);
+        $this->recalculateWeight();
+        $this->recalculateDeclaredValue();
+        break;
+      }
+    }
     return $this;
   }
 
@@ -158,7 +164,8 @@ class Package extends ContentEntityBase implements PackageInterface {
    * {@inheritdoc}
    */
   protected function recalculateDeclaredValue() {
-    $total_declared_value = NULL;
+    // @todo Dont hard code currency.
+    $total_declared_value = new Price('0.00', 'USD');
     foreach ($this->getItems() as $item) {
       $declared_value = $item->getDeclaredValue();
       $total_declared_value = $total_declared_value ? $total_declared_value->add($declared_value) : $declared_value;

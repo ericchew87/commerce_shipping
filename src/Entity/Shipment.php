@@ -31,9 +31,19 @@ use Drupal\commerce_shipping\Entity\PackageInterface;
  *   ),
  *   bundle_label = @Translation("Shipment type"),
  *   handlers = {
+ *     "list_builder" = "Drupal\commerce_shipping\ShipmentListBuilder",
  *     "storage" = "Drupal\commerce_shipping\ShipmentStorage",
  *     "access" = "Drupal\Core\Entity\EntityAccessControlHandler",
- *     "views_data" = "Drupal\views\EntityViewsData"
+ *     "views_data" = "Drupal\views\EntityViewsData",
+ *     "form" = {
+ *       "default" = "Drupal\commerce_shipping\Form\ShipmentForm",
+ *       "add" = "Drupal\commerce_shipping\Form\ShipmentForm",
+ *       "edit" = "Drupal\commerce_shipping\Form\ShipmentForm",
+ *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",
+ *     },
+ *     "route_provider" = {
+ *       "default" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
+ *     },
  *   },
  *   base_table = "commerce_shipment",
  *   admin_permission = "administer commerce_shipment",
@@ -44,6 +54,13 @@ use Drupal\commerce_shipping\Entity\PackageInterface;
  *     "label" = "title",
  *     "uuid" = "uuid",
  *   },
+ *   links = {
+ *     "canonical" = "/admin/commerce/orders/{commerce_order}/shipments/{commerce_shipment}",
+ *     "collection" = "/admin/commerce/orders/{commerce_order}/shipments",
+ *     "add-form" = "/admin/commerce/orders/{commerce_order}/shipments/add/{commerce_shipment_type}",
+ *     "edit-form" = "/admin/commerce/orders/{commerce_order}/shipments/{commerce_shipment}/edit",
+ *     "delete-form" = "/admin/commerce/orders/{commerce_order}/shipments/{commerce_shipment}/delete",
+ *   },
  *   bundle_entity_type = "commerce_shipment_type",
  *   field_ui_base_route = "entity.commerce_shipment_type.edit_form",
  * )
@@ -51,6 +68,15 @@ use Drupal\commerce_shipping\Entity\PackageInterface;
 class Shipment extends ContentEntityBase implements ShipmentInterface {
 
   use EntityChangedTrait;
+
+  /**
+  * {@inheritdoc}
+  */
+  protected function urlRouteParameters($rel) {
+    $uri_route_parameters = parent::urlRouteParameters($rel);
+    $uri_route_parameters['commerce_order'] = $this->getOrderId();
+    return $uri_route_parameters;
+  }
 
   /**
    * {@inheritdoc}
@@ -440,6 +466,9 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
       $this->set('package_type', $default_package_type->getId());
     }
     $this->recalculateWeight();
+    if ($this->getAmount() === NULL) {
+      $this->setAmount($this->getTotalDeclaredValue());
+    }
     if (!empty($this->getItems()) && $this->getData('unpackaged_items') === NULL) {
       $this->setData('unpackaged_items', $this->getItems());
     }

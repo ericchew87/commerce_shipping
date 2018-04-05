@@ -17,6 +17,9 @@ use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodInterf
  */
 class ManualShipmentPackager extends ShipmentPackagerBase {
 
+  /**
+   * {@inheritdoc}
+   */
   public function packageItems(ShipmentInterface $shipment, ShippingMethodInterface $shipping_method) {
     /** @var \Drupal\commerce_shipping\ShipmentItem[] $items */
     $items = $shipment->getData('unpackaged_items');
@@ -43,7 +46,9 @@ class ManualShipmentPackager extends ShipmentPackagerBase {
             ]);
             $shipment->addPackage($package);
             $item_qty -= $packaging_option['max'];
-            // @todo: ShipmentItem are immutable, need to delete current item and add new one with correct quantity.
+            if ($item_qty == 0) {
+              unset($items[$key]);
+            }
           }
           if ($item_qty > 0 && $item_qty >= $packaging_option['min'] && $item_qty <= $packaging_option['max']) {
             $package = $this->entityTypeManager->getStorage('commerce_package')->create([

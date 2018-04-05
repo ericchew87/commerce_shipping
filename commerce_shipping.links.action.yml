@@ -15,3 +15,9 @@ entity.commerce_package_type.add_form:
   title: 'Add package type'
   appears_on:
     - entity.commerce_package_type.collection
+
+entity.commerce_shipment.add:
+  route_name: entity.commerce_shipment.add
+  title: 'Add shipment'
+  appears_on:
+    - entity.commerce_shipment.collection

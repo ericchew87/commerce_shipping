@@ -16,6 +16,9 @@ use Drupal\commerce_shipping\Plugin\Commerce\ShippingMethod\ShippingMethodInterf
  */
 class DefaultIndividualShipmentPackager extends ShipmentPackagerBase {
 
+  /**
+   * {@inheritdoc}
+   */
   public function packageItems(ShipmentInterface $shipment, ShippingMethodInterface $shipping_method) {
     $shipment->setPackageType($shipping_method->getDefaultPackageType());
     /** @var \Drupal\commerce_shipping\ShipmentItem[] $items */

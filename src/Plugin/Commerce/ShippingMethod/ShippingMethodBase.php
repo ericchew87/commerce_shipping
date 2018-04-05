@@ -120,11 +120,12 @@ abstract class ShippingMethodBase extends PluginBase implements ContainerFactory
     return $packagers;
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function packageShipment(ShipmentInterface $shipment) {
     // Don't let the ShipmentOrderProcessor mess with the shipment data.
     $shipment->setData('owned_by_packer', FALSE);
-    // Clear any information added by other shipping methods.
-    $shipment->resetPackagingData();
     $packagers = $this->getPackagers();
     if ($packagers) {
       /** @var \Drupal\commerce_shipping\Plugin\Commerce\ShipmentPackager\ShipmentPackagerInterface $packager */

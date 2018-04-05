@@ -59,6 +59,7 @@ class PackagingFormatter extends DecimalFormatter implements ContainerFactoryPlu
    * {@inheritdoc}
    */
   public function viewElements(FieldItemListInterface $items, $langcode) {
+    // @TODO: Needs work.
     $elements = [];
     $settings = $this->getFieldSettings();
 

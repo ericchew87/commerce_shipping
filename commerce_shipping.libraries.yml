@@ -1,0 +1,10 @@
+shipment_builder:
+  version: VERSION
+  css:
+    theme:
+      css/shipment-builder.css: {}
+  js:
+    js/shipment-builder.js: {}
+  dependencies:
+    - core/jquery.ui.sortable
+    - core/drupal.dialog.off_canvas
