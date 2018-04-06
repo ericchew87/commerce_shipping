@@ -12,7 +12,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\physical\Weight;
 
 /**
- * Defines the shipment entity class.
+ * Defines the package entity class.
  *
  * @ContentEntityType(
  *   id = "commerce_package",
@@ -191,7 +191,7 @@ class Package extends ContentEntityBase implements PackageInterface {
   }
 
   /**
-   * Recalculates the shipment's weight.
+   * Recalculates the package's weight.
    */
   protected function recalculateWeight() {
     if (!$this->hasItems()) {
@@ -306,7 +306,7 @@ class Package extends ContentEntityBase implements PackageInterface {
 
     $fields['tracking_code'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Tracking code'))
-      ->setDescription(t('The shipment tracking code.'))
+      ->setDescription(t('The package tracking code.'))
       ->setDefaultValue('')
       ->setSetting('max_length', 255)
       ->setDisplayConfigurable('form', TRUE)

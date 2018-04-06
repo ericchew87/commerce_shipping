@@ -81,7 +81,7 @@ class ShipmentBuilderForm extends FormBase {
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state, ShipmentInterface $shipment = NULL, OrderInterface $order = NULL) {
+  public function buildForm(array $form, FormStateInterface $form_state, OrderInterface $order = NULL, ShipmentInterface $shipment = NULL) {
 
     if (!$shipment) {
       $shipment = $this->entityTypeManager->getStorage('commerce_shipment')->create([
