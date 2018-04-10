@@ -58,34 +58,25 @@ class MoveShipmentItemController implements ContainerInjectionInterface {
    * The ID of the package the shipment item was moved to, or 'shipment-item-area' if not a package.
    */
   public function moveItem(OrderInterface $order, $shipment_id, $shipment_item_id, $package_from, $package_to) {
-    if ($shipment_id == 'new') {
-      $collection = 'commerce_shipping.order.'.$order->id().'.shipment.new';
-    } else if ($shipment = Shipment::load($shipment_id)) {
+    if ($shipment = Shipment::load($shipment_id)) {
       $collection = 'commerce_shipping.order.'.$order->id().'.shipment.'.$shipment->id();
     }
 
     if (!empty($collection)) {
       $temp_store = $this->tempStoreFactory->get($collection);
-      /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
-      $shipment = $temp_store->get('shipment');
-      $packages = $shipment->getPackages();
+      /** @var \Drupal\commerce_shipping\Entity\PackageInterface[] $packages */
+      $packages = $temp_store->get('packages');
       $shipment_item = $this->getShipmentItem($shipment, $shipment_item_id);
 
       if ($package_to !== 'shipment-item-area') {
         $packages[(int)$package_to]->addItem($shipment_item);
-        if (!$packages[(int)$package_to]->isNew()) {
-          $packages[(int)$package_to]->save();
-        }
       }
       if ($package_from !== 'shipment-item-area') {
         $packages[(int)$package_from]->removeItem($shipment_item);
-        if (!$packages[(int)$package_from]->isNew()) {
-          $packages[(int)$package_from]->save();
-        }
       }
-      $shipment->setPackages($packages);
-      $temp_store->set('shipment', $shipment);
+      $temp_store->set('packages', $packages);
     }
+
   }
 
   /**

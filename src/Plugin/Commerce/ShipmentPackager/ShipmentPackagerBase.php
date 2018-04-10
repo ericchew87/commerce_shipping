@@ -2,8 +2,9 @@
 
 namespace Drupal\commerce_shipping\Plugin\Commerce\ShipmentPackager;
 
+use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\commerce_shipping\PackageTypeManagerInterface;
-use Drupal\commerce_shipping\Plugin\Commerce\PackageType\PackageTypeInterface;
+use Drupal\commerce_shipping\ShipmentItem;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Plugin\PluginBase;
@@ -41,6 +42,29 @@ abstract class ShipmentPackagerBase extends PluginBase implements ContainerFacto
       $container->get('entity_type.manager'),
       $container->get('plugin.manager.commerce_package_type')
     );
+  }
+
+  protected function updatePackagedItems(ShipmentInterface $shipment, array $items) {
+    $packaged_items = $shipment->getData('packaged_items');
+    foreach ($items as $item) {
+      $packaged_items[] = $item;
+    }
+    $shipment->setData('packaged_items', $packaged_items);
+  }
+
+  protected function updateItemQuantity(ShipmentItem $item, $new_quantity) {
+    $new_quantity = $new_quantity == 0 ? 1 : $new_quantity;
+    $quantity_change = (string)($new_quantity / $item->getQuantity());
+
+    $new_item = new ShipmentItem([
+      'order_item_id' => $item->getOrderItemId(),
+      'title' => $item->getTitle(),
+      'quantity' => $new_quantity,
+      'weight' => $item->getWeight()->multiply($quantity_change),
+      'declared_value' => $item->getDeclaredValue()->multiply($quantity_change),
+    ]);
+
+    return $new_item;
   }
 
 }

@@ -111,8 +111,11 @@ class ShipmentForm extends ContentEntityForm {
     }
     $shipment->setShippingProfile($shipping_profile);
 
+    // This code was taken from the DefaultPacker.
+    // Can't use PackageManager because it builds ALL shipments, not a single shipment.
     if (!$shipment->hasItems()) {
       $items = [];
+      // @TODO If order has multiple shipments, should we inspect them and exclude their ShipmentItems from this Shipment?
       foreach ($order->getItems() as $order_item) {
         $purchased_entity = $order_item->getPurchasedEntity();
         // Ship only shippable purchasable entity types.
@@ -170,7 +173,6 @@ class ShipmentForm extends ContentEntityForm {
   }
 
   public function submitForm(array &$form, FormStateInterface $form_state) {
-//    parent::submitForm($form, $form_state);
 
     /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
     $shipment = $this->entity;

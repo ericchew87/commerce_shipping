@@ -135,6 +135,8 @@ abstract class ShippingMethodBase extends PluginBase implements ContainerFactory
           break;
         }
       }
+      $items = $shipment->getData('unpackaged_items', []) + $shipment->getData('packaged_items', []);
+      $shipment->setItems($items);
     }
   }
 

@@ -83,20 +83,15 @@ class ShipmentBuilderForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, OrderInterface $order = NULL, ShipmentInterface $shipment = NULL) {
 
-    if (!$shipment) {
-      $shipment = $this->entityTypeManager->getStorage('commerce_shipment')->create([
-        'type' => $this->getShipmentType($order),
-      ]);
-    }
-    $this->shipment = $shipment;
+    $this->shipment = clone $shipment;
 
     $temp_store = $this->getTempstore();
     if (empty($temp_store->get('shipment'))) {
-      $this->prepareShipment();
+      $temp_store->set('shipment', $shipment);
+      $temp_store->set('packages', $shipment->getPackages());
     }
-
     /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
-    $shipment = $temp_store->get(('shipment'));
+    $shipment = $temp_store->get('shipment');
     $order_id = $shipment->getOrderId();
 
     $shipment_id = $shipment->id() ? $shipment->id() : 'new';
@@ -107,12 +102,13 @@ class ShipmentBuilderForm extends FormBase {
     }, $package_types);
 
     $form['new_package'] = [
-      '#type' => 'fieldset',
-    ];
-    $form['new_package']['new_package_select'] = [
-      '#type' => 'select',
-      '#title' => t('Package Type'),
-      '#options' => $package_types,
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => [
+          'container-inline',
+          'add-package'
+        ],
+      ],
     ];
 
     $form['new_package']['new_package_submit'] = [
@@ -123,6 +119,11 @@ class ShipmentBuilderForm extends FormBase {
         'callback' => [$this, 'ajaxRefresh'],
         'wrapper' => 'shipment-builder'
       ],
+    ];
+
+    $form['new_package']['new_package_select'] = [
+      '#type' => 'select',
+      '#options' => $package_types,
     ];
 
     $form['shipment_builder'] = [
@@ -145,6 +146,15 @@ class ShipmentBuilderForm extends FormBase {
       ],
     ];
 
+    $form['shipment_builder']['shipment_items']['title'] = [
+      '#type' => 'html_tag',
+      '#tag' => 'h3',
+      '#value' => t('Un-Packaged Items'),
+      '#attributes' => [
+        'class' => ['shipment-items-title'],
+      ],
+    ];
+
     $form['shipment_builder']['packages'] = [
       '#type' => 'container',
       '#attributes' => [
@@ -155,40 +165,102 @@ class ShipmentBuilderForm extends FormBase {
       ],
     ];
 
-    $packages = $shipment->getPackages();
-    $packaged_items = [];
-    foreach ($packages as $delta => $package) {
-      $package_items = '';
-      foreach ($package->getItems() as $item) {
-        $packaged_items[] = $item;
-        $package_items .=
-          '<div data-shipment-item-id="' . $item->getOrderItemId() . '-' . (int)$item->getQuantity() . '" class="draggable shipment-item">' . $item->getTitle() . '</div>';
+    $unpackaged_items = [];
+    foreach ($shipment->getItems() as $item) {
+      $quantity = (int)$item->getQuantity();
+      $id = $item->getOrderItemId();
+      $unpackaged_items[$id.'-'.$quantity]['item'] = $item;
+      if (empty($unpackaged_items[$id.'-'.$quantity]['quantity'])) {
+        $unpackaged_items[$id.'-'.$quantity]['quantity'] = 1;
+      } else {
+        $unpackaged_items[$id.'-'.$quantity]['quantity']++;
       }
+    }
+
+    /** @var \Drupal\commerce_shipping\Entity\PackageInterface[] $packages */
+    $packages = $temp_store->get('packages');
+    foreach ($packages as $delta => $package) {
 
       $form['shipment_builder']['packages'][$delta] = [
-        '#markup' => '<div data-package-id="'.$delta.'" class="shipment-builder__area">'.$package->getTitle(). $package_items .'</div>',
+        '#type' => 'container',
+        '#attributes' => [
+          'class' => ['package'],
+        ],
       ];
 
-      $form['shipment_builder']['packages'][$delta]['remove'] = [
+      $form['shipment_builder']['packages'][$delta]['package_header'] = [
+        '#type' => 'container',
+        '#attributes' => [
+          'class' => ['package-header'],
+        ],
+      ];
+
+      $form['shipment_builder']['packages'][$delta]['package_header']['title'] = [
+        '#type' => 'html_tag',
+        '#tag' => 'h3',
+        '#value' => $package->getTitle(),
+        '#attributes' => [
+          'class' => ['package-title'],
+        ],
+      ];
+
+      $form['shipment_builder']['packages'][$delta]['package_header']['remove-' . $delta] = [
         '#type' => 'submit',
-        '#value' => t('Remove Package'),
+        '#value' => t('Remove Package ' . $delta),
         '#package_delta' => $delta,
         '#submit' => [[$this, 'removePackageSubmit']],
+        '#attributes' => [
+          'class' => [
+            'remove-package',
+          ],
+        ],
         '#ajax' => [
           'callback' => [$this, 'ajaxRefresh'],
           'wrapper' => 'shipment-builder'
         ],
       ];
+
+      $form['shipment_builder']['packages'][$delta]['items'] = [
+        '#type' => 'container',
+        '#attributes' => [
+          'data-package-id' => $delta,
+          'class' => ['shipment-builder__area'],
+        ],
+      ];
+
+      foreach ($package->getItems() as $item) {
+        $id = $item->getOrderItemId();
+        $quantity = (int)$item->getQuantity();
+        $unpackaged_items[$id.'-'.$quantity]['quantity']--;
+
+        $form['shipment_builder']['packages'][$delta]['items'][] = [
+          '#type' => 'html_tag',
+          '#tag' => 'p',
+          '#value' => t($item->getTitle() . ' x' . $quantity),
+          '#attributes' => [
+            'data-shipment-item-id' => $id . '-' . $quantity,
+            'class' => ['draggable', 'shipment-item'],
+          ],
+        ];
+      }
     }
 
     foreach ($shipment->getItems() as $item) {
-      if (!in_array($item, $packaged_items)) {
+      $id = $item->getOrderItemId();
+      $quantity = (int)$item->getQuantity();
+      if ($unpackaged_items[$id.'-'.$quantity]['quantity'] > 0) {
         $form['shipment_builder']['shipment_items'][] = [
-          '#markup' => '<div data-shipment-item-id="'.
-            $item->getOrderItemId() . '-' .
-            (int)$item->getQuantity().'"
-           class="draggable shipment-item">' . $item->getTitle() . '</div>',
+          '#type' => 'container',
+          '#markup' => $item->getTitle() . ' x' . $quantity,
+          '#attributes' => [
+            'data-shipment-item-id' => $id . '-' . $quantity,
+            'class' => [
+              'draggable',
+              'shipment-item'
+            ],
+          ],
         ];
+        $unpackaged_items[$id . '-' . $quantity]['quantity']--;
       }
     }
 
@@ -216,7 +288,14 @@ class ShipmentBuilderForm extends FormBase {
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
+    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
     $shipment = $this->getTempstore()->get('shipment');
+    /** @var \Drupal\commerce_shipping\Entity\PackageInterface[] $packages */
+    $packages = $this->getTempstore()->get('packages');
+    foreach ($packages as $package) {
+      $package->save();
+    }
+    $shipment->setPackages($packages);
     $shipment->save();
     $this->getTempStore()->delete('shipment');
   }
@@ -301,47 +380,6 @@ class ShipmentBuilderForm extends FormBase {
   }
 
   /**
-   * Populates the ShipmentItems on a shipment if empty and saves the shipment to TempStore.
-   */
-  protected function prepareShipment() {
-
-    $temp_store = $this->getTempstore();
-    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
-    $shipment = $this->shipment;
-
-    if (!$shipment->hasItems()) {
-      $order = $this->getOrder();
-      $items = [];
-      foreach ($order->getItems() as $order_item) {
-        $purchased_entity = $order_item->getPurchasedEntity();
-        // Ship only shippable purchasable entity types.
-        if (!$purchased_entity || !$purchased_entity->hasField('weight')) {
-          continue;
-        }
-        // The weight will be empty if the shippable trait was added but the
-        // existing entities were not updated.
-        if ($purchased_entity->get('weight')->isEmpty()) {
-          $purchased_entity->set('weight', new Weight(0, WeightUnit::GRAM));
-        }
-
-        $quantity = $order_item->getQuantity();
-        /** @var \Drupal\physical\Weight $weight */
-        $weight = $purchased_entity->get('weight')->first()->toMeasurement();
-        $items[] = new ShipmentItem([
-          'order_item_id' => $order_item->id(),
-          'title' => $order_item->getTitle(),
-          'quantity' => $quantity,
-          'weight' => $weight->multiply($quantity),
-          'declared_value' => $order_item->getUnitPrice()->multiply($quantity),
-        ]);
-      }
-      $shipment->setItems($items);
-    }
-
-    $temp_store->set('shipment', $shipment);
-  }
-
-  /**
    * AJAX refresh for rebuilding the ShipmentBuilder form.
    *
    * @param array $form
@@ -361,7 +399,6 @@ class ShipmentBuilderForm extends FormBase {
    */
   public function addPackageSubmit(array $form, FormStateInterface $form_state) {
     $temp_store = $this->getTempstore();
-    $shipment = $temp_store->get('shipment');
     $values = $form_state->getValues();
     $package_type = $this->packageTypeManager->createInstance($values['new_package_select']);
     /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
@@ -373,8 +410,9 @@ class ShipmentBuilderForm extends FormBase {
       'package_type' => $package_type->getId(),
       'weight' => new Weight('0', 'g'),
     ]);
-    $shipment->addPackage($package);
-    $temp_store->set('shipment', $shipment);
+    $packages = $temp_store->get('packages');
+    $packages[] = $package;
+    $temp_store->set('packages', $packages);
     $form_state->setRebuild();
   }
 
@@ -386,11 +424,9 @@ class ShipmentBuilderForm extends FormBase {
    */
   public function removePackageSubmit(array $form, FormStateInterface $form_state) {
     $temp_store = $this->getTempstore();
-    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
-    $shipment = $temp_store->get('shipment');
-    $package = $shipment->getPackages()[$form_state->getTriggeringElement()['#package_delta']];
-    $shipment->removePackage($package);
-    $temp_store->set('shipment', $shipment);
+    $packages = $temp_store->get('packages');
+    unset($packages[$form_state->getTriggeringElement()['#package_delta']]);
+    $temp_store->set('packages', $packages);
     $form_state->setRebuild();
   }
 }

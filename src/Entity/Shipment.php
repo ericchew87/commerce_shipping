@@ -461,8 +461,6 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
    * {@inheritdoc}
    */
   public static function postDelete(EntityStorageInterface $storage, array $entities) {
-    parent::postDelete($storage, $entities);
-
     $packages = [];
     /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $entity */
     foreach ($entities as $entity) {
@@ -486,6 +484,7 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
     /** @var \Drupal\Core\Entity\EntityStorageInterface $package_storage */
     $package_storage = \Drupal::service('entity_type.manager')->getStorage('commerce_package');
     $package_storage->delete($packages);
+    parent::postDelete($storage, $entities);
 
   }
 

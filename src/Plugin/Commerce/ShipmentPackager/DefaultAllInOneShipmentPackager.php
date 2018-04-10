@@ -32,6 +32,7 @@ class DefaultAllInOneShipmentPackager extends ShipmentPackagerBase {
       'weight' => $shipment->getWeight(),
     ]);
     $shipment->addPackage($package);
+    $this->updatePackagedItems($shipment, $items);
     $shipment->setData('unpackaged_items', []);
   }
 

@@ -46,6 +46,7 @@ commerce_shipping.shipment_builder:
   path: '/admin/commerce/orders/{order}/shipments/{shipment}/shipment-builder'
   defaults:
     _form: '\Drupal\commerce_shipping\Form\ShipmentBuilderForm'
+    _title: 'Shipment Builder'
   requirements:
     _permission: 'administer commerce_shipment_type'
   options:

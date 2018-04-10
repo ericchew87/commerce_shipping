@@ -26,6 +26,8 @@ class DefaultIndividualShipmentPackager extends ShipmentPackagerBase {
     foreach ($items as $item) {
       // @todo: ShipmentItem are immutable, need to delete current item and add new one with correct quantity.
       for ($i = 0; $i < $item->getQuantity(); $i++) {
+        $item = $this->updateItemQuantity($item, 1);
+        $this->updatePackagedItems($shipment, [$item]);
         /** @var \Drupal\commerce_shipping\Entity\PackageInterface $package */
         $package = $this->entityTypeManager->getStorage('commerce_package')->create([
           'items' => [$item],
@@ -39,5 +41,7 @@ class DefaultIndividualShipmentPackager extends ShipmentPackagerBase {
     }
     $shipment->setData('unpackaged_items', []);
   }
+
+
 
 }

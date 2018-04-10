@@ -87,8 +87,9 @@ class PackagingWidget extends WidgetBase implements ContainerFactoryPluginInterf
     }, $package_types);
 
     $element['package_type'] = [
-      '#title' => t('Package Type'),
       '#type' => 'select',
+      '#title' => t('Package Type'),
+      '#title_display' => FALSE,
       '#empty_option' => t('- Select -'),
       '#options' => $package_types,
       '#default_value' => isset($items[$delta]->package_type) ? $items[$delta]->package_type : '',
@@ -98,6 +99,7 @@ class PackagingWidget extends WidgetBase implements ContainerFactoryPluginInterf
     $element['min'] = [
       '#type' => 'number',
       '#title' => t('Minimum'),
+      '#title_display' => FALSE,
       '#default_value' => isset($items[$delta]->min) ? $items[$delta]->min : 0,
       '#placeholder' => $this->getSetting('placeholder'),
       '#step' => 1,
@@ -107,6 +109,7 @@ class PackagingWidget extends WidgetBase implements ContainerFactoryPluginInterf
     $element['max'] = [
       '#type' => 'number',
       '#title' => t('Maximum'),
+      '#title_display' => FALSE,
       '#default_value' => isset($items[$delta]->max) ? $items[$delta]->max : 0,
       '#placeholder' => $this->getSetting('placeholder'),
       '#step' => 1,
@@ -130,7 +133,28 @@ class PackagingWidget extends WidgetBase implements ContainerFactoryPluginInterf
     $title = $this->fieldDefinition->getLabel();
     $description = FieldFilteredMarkup::create(\Drupal::token()->replace($this->fieldDefinition->getDescription()));
 
-    $elements = [];
+    $elements['details'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Manual Packaging'),
+      '#open' => TRUE,
+    ];
+
+    $elements['details']['table'] = [
+      '#type' => 'table',
+      '#header' => [
+        'Package Type',
+        'Minimum',
+        'Maximum',
+      ],
+      '#field_parents' => $parents,
+      '#field_name' => $field_name,
+      '#required' => $this->fieldDefinition->isRequired(),
+      '#title' => $title,
+      '#description' => $description,
+      '#element_validate' => [
+        [static::class, 'validate'],
+      ],
+    ];
 
     if ($max > 0) {
       for ($delta = 0; $delta < $max; $delta++) {
@@ -160,21 +184,7 @@ class PackagingWidget extends WidgetBase implements ContainerFactoryPluginInterf
 
         if ($element) {
           // Input field for the delta (drag-n-drop reordering).
-          if ($is_multiple) {
-            // We name the element '_weight' to avoid clashing with elements
-            // defined by widget.
-            $element['_weight'] = [
-              '#type' => 'weight',
-              '#title' => $this->t('Weight for row @number', ['@number' => $delta + 1]),
-              '#title_display' => 'invisible',
-              // Note: this 'delta' is the FAPI #type 'weight' element's property.
-              '#delta' => $max,
-              '#default_value' => $items[$delta]->_weight ?: $delta,
-              '#weight' => 100,
-            ];
-          }
-
-          $elements[$delta] = $element;
+          $elements['details']['table'][$delta] = $element;
         }
       }
     }
@@ -182,28 +192,16 @@ class PackagingWidget extends WidgetBase implements ContainerFactoryPluginInterf
     $field_state['items_count'] = $max;
     static::setWidgetState($parents, $field_name, $form_state, $field_state);
     if ($elements) {
-      $elements += [
-        '#theme' => 'field_multiple_value_form',
-        '#field_name' => $field_name,
-        '#cardinality' => $cardinality,
-        '#cardinality_multiple' => $this->fieldDefinition->getFieldStorageDefinition()->isMultiple(),
-        '#required' => $this->fieldDefinition->isRequired(),
-        '#title' => $title,
-        '#description' => $description,
-        '#element_validate' => [
-          [static::class, 'validate'],
-        ],
-        '#max_delta' => $max,
-      ];
+      $elements['details']['table']['#max_delta'] = $max;
 
       // Add 'add more' button, if not working with a programmed form.
       if ($cardinality == FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED && !$form_state->isProgrammed()) {
         $id_prefix = implode('-', array_merge($parents, [$field_name]));
         $wrapper_id = Html::getUniqueId($id_prefix . '-add-more-wrapper');
-        $elements['#prefix'] = '<div id="' . $wrapper_id . '">';
-        $elements['#suffix'] = '</div>';
+        $elements['details']['#prefix'] = '<div id="' . $wrapper_id . '">';
+        $elements['details']['#suffix'] = '</div>';
 
-        $elements['add_more'] = [
+        $elements['details']['add_more'] = [
           '#type' => 'submit',
           '#name' => strtr($id_prefix, '-', '_') . '_add_more',
           '#value' => t('Add Packaging'),
@@ -220,6 +218,25 @@ class PackagingWidget extends WidgetBase implements ContainerFactoryPluginInterf
     }
 
     return $elements;
+  }
+
+  /**
+   * Submission handler for the "Add another item" button.
+   */
+  public static function addMoreSubmit(array $form, FormStateInterface $form_state) {
+    $button = $form_state->getTriggeringElement();
+
+    // Go one level up in the form, to the widgets container.
+    $element = NestedArray::getValue($form, array_slice($button['#array_parents'], 0, -1));
+    $field_name = $element['table']['#field_name'];
+    $parents = $element['table']['#field_parents'];
+
+    // Increment the items count.
+    $field_state = static::getWidgetState($parents, $field_name, $form_state);
+    $field_state['items_count']++;
+    static::setWidgetState($parents, $field_name, $form_state, $field_state);
+
+    $form_state->setRebuild();
   }
 
   /**
@@ -241,6 +258,7 @@ class PackagingWidget extends WidgetBase implements ContainerFactoryPluginInterf
    * {@inheritdoc}
    */
   public function massageFormValues(array $values, array $form, FormStateInterface $form_state) {
+    $values = $values[0]['table'];
     uasort($values, function ($a, $b) {
       if (!empty($a['max']) && !empty($b['max'])) {
         return ($a['max'] > $b['max']) ? -1 : 1;

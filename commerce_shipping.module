@@ -8,9 +8,30 @@
 use Drupal\commerce\BundleFieldDefinition;
 use Drupal\commerce\PurchasableEntityInterface;
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Url;
+
+/**
+ * Implements hook_entity_operation().
+ */
+function commerce_shipping_entity_operation(EntityInterface $entity) {
+  if ($entity->getEntityTypeId() === 'commerce_order') {
+    if (\Drupal::currentUser()->hasPermission('administer commerce_shipment')) {
+      $operations = [];
+      $operations['shipments'] = [
+        'title' => t('Shipments'),
+        'url' => Url::fromRoute('entity.commerce_shipment.collection', [
+          'commerce_order' => $entity->id(),
+        ]),
+        'weight' => 51,
+      ];
+      return $operations;
+    }
+  }
+}
 
 /**
  * Implements hook_commerce_entity_trait_info_alter().
