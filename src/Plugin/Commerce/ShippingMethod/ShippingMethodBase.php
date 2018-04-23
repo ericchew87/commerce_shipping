@@ -125,7 +125,6 @@ abstract class ShippingMethodBase extends PluginBase implements ContainerFactory
    */
   public function packageShipment(ShipmentInterface $shipment) {
     // Don't let the ShipmentOrderProcessor mess with the shipment data.
-    $shipment->setData('owned_by_packer', FALSE);
     $packagers = $this->getPackagers();
     if ($packagers) {
       /** @var \Drupal\commerce_shipping\Plugin\Commerce\ShipmentPackager\ShipmentPackagerInterface $packager */

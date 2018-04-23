@@ -464,28 +464,25 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
     $packages = [];
     /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $entity */
     foreach ($entities as $entity) {
-      $order = $entity->getOrder();
-      $values = $order->get('shipments')->getValue();
-      $shipment_ids = array_map(function ($value) {
-        return $value['target_id'];
-      }, $values);
-
-      $shipment_index = array_search($entity->id(), $shipment_ids);
-      // remove the reference to this shipment on the order.
-      $order->get('shipments')->removeItem($shipment_index);
-      $order->save();
-
+      if ($order = $entity->getOrder()) {
+        $shipment_ids = array_map(function ($value) {
+          return $value['target_id'];
+        }, $order->get('shipments')->getValue());
+        // remove the reference to this shipment on the order.
+        if ($shipment_index = array_search($entity->id(), $shipment_ids)) {
+          $order->get('shipments')->removeItem($shipment_index);
+          $order->save();
+        }
+      }
       // remove delete all packages on this shipment.
       foreach ($entity->getPackages() as $package) {
         $packages[$package->id()] = $package;
       }
-
     }
     /** @var \Drupal\Core\Entity\EntityStorageInterface $package_storage */
     $package_storage = \Drupal::service('entity_type.manager')->getStorage('commerce_package');
     $package_storage->delete($packages);
     parent::postDelete($storage, $entities);
-
   }
 
   /**
@@ -497,8 +494,8 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
       $this->set('package_type', $default_package_type->getId());
     }
     $this->recalculateWeight();
-    if ($this->getAmount() === NULL) {
-      $this->setAmount($this->getTotalDeclaredValue());
+    if ($this->getAmount() === NULL && $amount = $this->getTotalDeclaredValue()) {
+      $this->setAmount($amount);
     }
     if (!empty($this->getItems()) && $this->getData('unpackaged_items') === NULL) {
       $this->setData('unpackaged_items', $this->getItems());
