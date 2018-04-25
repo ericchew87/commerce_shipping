@@ -462,20 +462,21 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
    */
   public static function postDelete(EntityStorageInterface $storage, array $entities) {
     $packages = [];
-    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $entity */
-    foreach ($entities as $entity) {
-      if ($order = $entity->getOrder()) {
+    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
+    foreach ($entities as $shipment) {
+      if ($order = $shipment->getOrder()) {
         $shipment_ids = array_map(function ($value) {
           return $value['target_id'];
         }, $order->get('shipments')->getValue());
         // remove the reference to this shipment on the order.
-        if ($shipment_index = array_search($entity->id(), $shipment_ids)) {
+        if (in_array($shipment->id(), $shipment_ids)) {
+          $shipment_index = array_search($shipment->id(), $shipment_ids);
           $order->get('shipments')->removeItem($shipment_index);
           $order->save();
         }
       }
       // remove delete all packages on this shipment.
-      foreach ($entity->getPackages() as $package) {
+      foreach ($shipment->getPackages() as $package) {
         $packages[$package->id()] = $package;
       }
     }
