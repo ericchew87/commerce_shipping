@@ -323,6 +323,7 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
     $this->entityTypeManager()->getStorage('commerce_package')->delete($this->getPackages());
     $this->setPackages([]);
     $this->setData('unpackaged_items', $this->getItems());
+    $this->setData('packaged_items', []);
     return $this;
   }
 

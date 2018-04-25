@@ -2,8 +2,10 @@
 
 namespace Drupal\commerce_shipping;
 
+use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_price\Entity\Currency;
 use Drupal\commerce_price\NumberFormatterFactoryInterface;
+use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityListBuilder;
 use Drupal\Core\Entity\EntityStorageInterface;
@@ -118,4 +120,38 @@ class ShipmentListBuilder extends EntityListBuilder {
 
     return $row + parent::buildRow($entity);
   }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function render() {
+    $order_id = $this->routeMatch->getParameter('commerce_order');
+    $order = Order::load($order_id);
+    $order_item_usage = [];
+    /** @var \Drupal\commerce_order\Entity\OrderItemInterface $order_item */
+    foreach ($order->getItems() as $order_item) {
+      $order_item_usage[$order_item->id()] = [
+        'quantity' => (int)$order_item->getQuantity(),
+        'item' => $order_item,
+      ];
+    }
+    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface[] $shipments */
+    $shipments = $this->load();
+    foreach ($shipments as $shipment) {
+      foreach ($shipment->getItems() as $shipment_item) {
+        $order_item_usage[$shipment_item->getOrderItemId()]['quantity'] -= $shipment_item->getQuantity();
+      }
+    }
+
+    foreach ($order_item_usage as $order_item_id => $values) {
+      if ($values['quantity'] > 0) {
+        // @TODO Build section notifying that there are unshipped items
+      }
+    }
+
+    $build =  parent::render();
+
+    return $build;
+  }
+
 }
