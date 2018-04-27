@@ -11,6 +11,7 @@ use Drupal\Core\Entity\EntityListBuilder;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\views\Views;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -145,13 +146,34 @@ class ShipmentListBuilder extends EntityListBuilder {
       }
     }
 
+    $build =  parent::render();
+
+    $rows = [];
     foreach ($order_item_usage as $order_item_id => $values) {
       if ($values['quantity'] > 0) {
-        // @TODO Build section notifying that there are unshipped items
+        $rows[$order_item_id] = [
+          'product' => $values['item']->getPurchasedEntity()->label(),
+          'quantity' => $values['quantity'],
+        ];
       }
     }
 
-    $build =  parent::render();
+    if (!empty($rows)) {
+      $build['unshipped_items'] = [
+        '#type' => 'details',
+        '#title' => $this->t('The following products have not been shipped:'),
+        '#open' => TRUE,
+      ];
+      $build['unshipped_items']['table'] =[
+        '#type' => 'table',
+        '#title' => $this->t('Un-Shipped Items'),
+        '#header' => [
+          $this->t('Product'),
+          $this->t('Quantity'),
+        ],
+        '#rows' => $rows,
+      ];
+    }
 
     return $build;
   }
