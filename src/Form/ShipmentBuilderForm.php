@@ -9,7 +9,9 @@ use Drupal\commerce_shipping\ShipmentItem;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\TempStore\SharedTempStoreFactory;
+use Drupal\Core\Url;
 use Drupal\physical\Weight;
 use Drupal\physical\WeightUnit;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -216,7 +218,10 @@ class ShipmentBuilderForm extends FormBase {
         ],
         '#ajax' => [
           'callback' => [$this, 'ajaxRefresh'],
-          'wrapper' => 'shipment-builder'
+          'wrapper' => 'shipment-builder',
+          'progress' => [
+            'type' => 'fullscreen',
+          ],
         ],
       ];
 
@@ -265,15 +270,24 @@ class ShipmentBuilderForm extends FormBase {
     }
 
     $form['actions']['#type'] = 'actions';
-    $form['actions']['submit'] = array(
+    $form['actions']['submit_recalculate'] = array(
       '#type' => 'submit',
-      '#value' => $this->t('Save'),
+      '#value' => $this->t('Save and Update Rate'),
+      '#submit' => ['::submitForm'],
+      '#recalculate_rate' => TRUE,
       '#button_type' => 'primary',
+    );
+    $form['actions']['submit_select'] = array(
+      '#type' => 'submit',
+      '#value' => $this->t('Save and Select Rate'),
+      '#select_rate' => TRUE,
+      '#submit' => ['::submitForm'],
     );
     $form['actions']['cancel'] = array(
       '#type' => 'submit',
       '#value' => $this->t('Cancel'),
-      '#submit' => [[$this, 'cancelSubmit']],
+      '#submit' => ['::cancelSubmit'],
+      '#button_type' => 'danger',
     );
 
     $form['#attached']['library'][] = 'commerce_shipping/shipment_builder';
@@ -297,6 +311,33 @@ class ShipmentBuilderForm extends FormBase {
     }
     $shipment->setPackages($packages);
     $shipment->save();
+
+    $triggering_element = $form_state->getTriggeringElement();
+    if (!empty($triggering_element['#select_rate'])) {
+      $url = Url::fromRoute('entity.commerce_shipment.edit_form', ['commerce_order' => $shipment->getOrderId(), 'commerce_shipment' => $shipment->id()]);
+      $url->mergeOptions([
+        'query' => [
+          'step' => 'shipping-method',
+        ]
+      ]);
+      $form_state->setRedirectUrl($url);
+    } else if (!empty($triggering_element['#recalculate_rate'])) {
+      $rates = $shipment->getShippingMethod()->getPlugin()->calculateRates($shipment);
+      foreach ($rates as $rate) {
+        if ($rate->getService()->getId() == $shipment->getShippingService()) {
+          $shipment->getShippingMethod()->getPlugin()->selectRate($shipment, $rate);
+        }
+      }
+      $shipment->save();
+      $url = Url::fromRoute('entity.commerce_shipment.collection', ['commerce_order' => $shipment->getOrderId()]);
+      $url->mergeOptions([
+        'query' => [
+          'step' => 'shipping-method',
+        ]
+      ]);
+      $form_state->setRedirectUrl($url);
+    }
+
     $this->getTempStore()->delete('shipment');
   }
 
@@ -307,9 +348,16 @@ class ShipmentBuilderForm extends FormBase {
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    */
   public function cancelSubmit(array &$form, FormStateInterface $form_state) {
+    $shipment = $this->getTempstore()->get('shipment');
+    $url = Url::fromRoute('entity.commerce_shipment.edit_form', ['commerce_order' => $shipment->getOrderId(), 'commerce_shipment' => $shipment->id()]);
+    $url->mergeOptions([
+      'query' => [
+        'step' => 'shipping-method',
+      ]
+    ]);
+    $form_state->setRedirectUrl($url);
     $this->getTempStore()->delete('shipment');
   }
-
 
   /**
    * Returns the TempStore.

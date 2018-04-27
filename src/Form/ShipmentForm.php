@@ -5,12 +5,20 @@ namespace Drupal\commerce_shipping\Form;
 use Drupal\commerce\EntityHelper;
 use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\commerce_shipping\ShipmentItem;
+use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Core\Ajax\AjaxResponse;
+use Drupal\Core\Ajax\OpenModalDialogCommand;
 use Drupal\Core\Entity\ContentEntityForm;
 use Drupal\Core\Entity\Entity\EntityFormDisplay;
+use Drupal\Core\Entity\EntityManagerInterface;
+use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Messenger\MessengerInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Url;
 use Drupal\physical\Weight;
 use Drupal\physical\WeightUnit;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Defines the shipment add/edit form.
@@ -18,32 +26,59 @@ use Drupal\physical\WeightUnit;
 class ShipmentForm extends ContentEntityForm {
 
   /**
+   * @var \Drupal\Core\Messenger\MessengerInterface $messenger
+   */
+  protected $messenger;
+
+  /**
+   * Constructs a ContentEntityForm object.
+   *
+   * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
+   *   The entity manager.
+   * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $entity_type_bundle_info
+   *   The entity type bundle service.
+   * @param \Drupal\Component\Datetime\TimeInterface $time
+   *   The time service.
+   */
+  public function __construct(EntityManagerInterface $entity_manager, EntityTypeBundleInfoInterface $entity_type_bundle_info = NULL, TimeInterface $time = NULL, MessengerInterface $messenger) {
+    parent::__construct($entity_manager, $entity_type_bundle_info, $time);
+    $this->messenger = $messenger;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('entity.manager'),
+      $container->get('entity_type.bundle.info'),
+      $container->get('datetime.time'),
+      $container->get('messenger')
+    );
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function form(array $form, FormStateInterface $form_state) {
-    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
-    $shipment = $this->entity;
+
     $this->prepareShipment($form, $form_state);
 
     $form['#wrapper_id'] = 'shipment-entity-form-wrapper';
     $form['#prefix'] = '<div id="' . $form['#wrapper_id'] . '">';
     $form['#suffix'] = '</div>';
 
-    if ($form_state->has('step') && $form_state->get('step') == 'shipping_method') {
-      return self::buildShippingMethodForm($form, $form_state);
+    if ($step = \Drupal::request()->query->get('step')) {
+      $form_state->set('step', $step);
     }
 
-    $form_state->set('step', 'shipping_information');
-    $form_display =$this->getFormDisplay($form_state);
-    $form_display->removeComponent('shipping_method');
-    $form_display->buildForm($shipment, $form, $form_state);
-
-    if (!empty($form['shipping_profile'])) {
-      $form['shipping_profile']['#type'] = 'fieldset';
-      $form['shipping_profile']['#title'] = $this->t('Shipping Profile');
+    switch ($form_state->get('step')) {
+      case 'shipping-method':
+        $form += self::buildShippingMethodForm($form, $form_state);
+        break;
+      default:
+        $form += self::buildShippingInformationForm($form, $form_state);
     }
-
-    $form += self::buildShipmentItemForm($form, $form_state);
 
     return $form;
   }
@@ -58,7 +93,33 @@ class ShipmentForm extends ContentEntityForm {
     }
   }
 
-  public function buildShipmentItemForm(array $form, FormStateInterface $form_state) {
+  public function goToShippingInformationForm(array $form, FormStateInterface $form_state) {
+    \Drupal::request()->query->remove('step');
+    $form_state->set('step', 'shipping-information');
+    $form_state->setRebuild(TRUE);
+  }
+
+  public function goToShipmentBuilderForm(array $form, FormStateInterface $form_state) {
+    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
+    $shipment = $this->entity;
+    $shipment->save();
+    \Drupal::request()->query->remove('destination');
+    $url = Url::fromRoute('commerce_shipping.shipment_builder', ['order' => $shipment->getOrderId(), 'shipment' => $shipment->id()]);
+    $form_state->setRedirectUrl($url);
+  }
+
+  public function buildShippingInformationForm(array $form, FormStateInterface $form_state) {
+    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
+    $shipment = $this->entity;
+    $form_state->set('step', 'shipping-information');
+    $form_display =$this->getFormDisplay($form_state);
+    $form_display->removeComponent('shipping_method');
+    $form_display->buildForm($shipment, $form, $form_state);
+
+    if (!empty($form['shipping_profile'])) {
+      $form['shipping_profile']['#type'] = 'fieldset';
+      $form['shipping_profile']['#title'] = $this->t('Shipping Profile');
+    }
 
     /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
     $shipment = $this->entity;
@@ -85,12 +146,12 @@ class ShipmentForm extends ContentEntityForm {
         $this->t('Product'),
         $this->t('Quantity'),
       ],
-      '#weight' => 99,
+      '#weight' => 98,
       '#empty' => $this->t('All items are already tied to other shipments.'),
     ];
 
     foreach ($order->getItems() as $order_item) {
-      $quantity_used = (array_key_exists($order_item->id(), $this_order_item_usage)) ? $this_order_item_usage[$order_item->id()] : 0;
+      $quantity_used = (array_key_exists($order_item->id(), $this_order_item_usage)) ? (int)$this_order_item_usage[$order_item->id()] : 0;
       $quantity_available = (int)$order_item->getQuantity();
       if (array_key_exists($order_item->id(), $other_order_item_usage)) {
         $quantity_available -= $other_order_item_usage[$order_item->id()];
@@ -109,23 +170,37 @@ class ShipmentForm extends ContentEntityForm {
           '#max' => $quantity_available,
           '#size' => 4,
           '#step' => 1,
-          '#default_value' => ($quantity_used != 0) ? $quantity_used : $quantity_available,
+          '#quantity_used' => $quantity_used,
+          '#default_value' => ($quantity_used != 0 && $quantity_used <= $quantity_available) ? $quantity_used : $quantity_available,
           '#suffix' => '<span>' . $this->t('Available:' . $quantity_available)  . '</span>',
       ];
+      if ($quantity_used > $quantity_available) {
+        $this->messenger->addWarning($this->t('Quantity for ' . $order_item->getPurchasedEntity()->label() . ' is currently set to <strong>' . $quantity_used . '</strong>, but only <strong>' .
+          $quantity_available . '</strong> are available.'));
+      }
     }
 
     return $form;
   }
 
-  public function submitShippingInformationForm(array $form, FormStateInterface $form_state) {
+  public function shippingInformationContinueSubmit(array $form, FormStateInterface $form_state) {
     /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
     $shipment = $this->entity;
+    $items_changed = FALSE;
     $items = [];
     foreach ($form_state->getvalue('shipment_item_builder') as $order_item_id => $values) {
+
+      // Once $items_changed is set to true, don't allow anything else to change it.
+      if (!$items_changed) {
+        $quantity_element = $form['shipment_item_builder'][$order_item_id]['quantity'];
+        $items_changed = $quantity_element['#quantity_used'] != $quantity_element['#value'];
+      }
+
       $quantity = $values['quantity'];
       if ($quantity <= 0) {
         continue;
       }
+
       /** @var \Drupal\commerce_order\Entity\OrderItemInterface $order_item */
       $order_item = $this->entityTypeManager->getStorage('commerce_order_item')->load($order_item_id);
       $purchased_entity = $order_item->getPurchasedEntity();
@@ -149,10 +224,14 @@ class ShipmentForm extends ContentEntityForm {
         'declared_value' => $order_item->getUnitPrice()->multiply($quantity),
       ]);
     }
-    $shipment->setItems($items);
-    $shipment->resetPackagingData();
+
+    if ($items_changed) {
+      $shipment->setItems($items);
+      $shipment->resetPackagingData();
+    }
+
     $this->entity = $this->buildEntity($form, $form_state);
-    $form_state->set('step', 'shipping_method');
+    $form_state->set('step', 'shipping-method');
     $form_state->setRebuild(TRUE);
   }
 
@@ -166,28 +245,6 @@ class ShipmentForm extends ContentEntityForm {
       $items = $shipment->get('shipping_method');
       $items->filterEmptyItems();
       $form['shipping_method'] = $widget->form($items, $form, $form_state);
-
-      if (!$shipment->isNew()) {
-        $url = Url::fromRoute('commerce_shipping.shipment_builder', ['order' => $shipment->getOrderId(), 'shipment' => $shipment->id()]);
-        $url->mergeOptions(['query' => ['destination' => \Drupal::service('path.current')->getPath()]]);
-        $form['shipment_builder'] = [
-          '#type' => 'link',
-          '#url' => $url,
-          '#title' => t('Edit Packages'),
-          '#weight' => -99,
-          '#attributes' => [
-            'class' => [
-              'use-ajax',
-              'button',
-            ],
-            'data-dialog-type' => 'modal',
-            'data-dialog-options' => json_encode([
-              'width' => 1200,
-            ]),
-          ],
-        ];
-        $form['#attached']['library'][] = 'core/drupal.dialog.ajax';
-      }
     }
 
     return $form;
@@ -200,15 +257,26 @@ class ShipmentForm extends ContentEntityForm {
    *   many entity types.
    */
   protected function actions(array $form, FormStateInterface $form_state) {
-
-    if ($form_state->has('step') && $form_state->get('step') == 'shipping_information') {
+    $actions = parent::actions($form, $form_state);
+    if ($form_state->has('step') && $form_state->get('step') == 'shipping-information') {
       $actions['submit'] = [
         '#type' => 'submit',
         '#value' => $this->t('Save and Continue'),
-        '#submit' => ['::submitShippingInformationForm'],
+        '#submit' => ['::shippingInformationContinueSubmit'],
       ];
     } else {
-      $actions = parent::actions($form, $form_state);
+      $actions['previous'] = [
+        '#type' => 'submit',
+        '#value' => $this->t('Previous'),
+        '#button_type' => 'primary',
+        '#submit' => ['::goToShippingInformationForm'],
+        '#weight' => -99,
+      ];
+      $actions['package'] = [
+        '#type' => 'submit',
+        '#value' => $this->t('Save and Edit Packages'),
+        '#submit' => ['::submitForm', '::goToShipmentBuilderForm'],
+      ];
     }
 
     return $actions;

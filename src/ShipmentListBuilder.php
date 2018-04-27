@@ -139,7 +139,9 @@ class ShipmentListBuilder extends EntityListBuilder {
     $shipments = $this->load();
     foreach ($shipments as $shipment) {
       foreach ($shipment->getItems() as $shipment_item) {
-        $order_item_usage[$shipment_item->getOrderItemId()]['quantity'] -= $shipment_item->getQuantity();
+        if (!empty($order_item_usage[$shipment_item->getOrderItemId()])) {
+          $order_item_usage[$shipment_item->getOrderItemId()]['quantity'] -= $shipment_item->getQuantity();
+        }
       }
     }
 
