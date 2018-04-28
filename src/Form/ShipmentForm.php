@@ -151,17 +151,18 @@ class ShipmentForm extends ContentEntityForm {
     ];
 
     foreach ($order->getItems() as $order_item) {
-      $quantity_used = (array_key_exists($order_item->id(), $this_order_item_usage)) ? (int)$this_order_item_usage[$order_item->id()] : 0;
-      $quantity_available = (int)$order_item->getQuantity();
-      if (array_key_exists($order_item->id(), $other_order_item_usage)) {
-        $quantity_available -= $other_order_item_usage[$order_item->id()];
-      }
+      if ($order_item->getPurchasedEntity()->hasField('weight')) {
+        $quantity_used = (array_key_exists($order_item->id(), $this_order_item_usage)) ? (int)$this_order_item_usage[$order_item->id()] : 0;
+        $quantity_available = (int)$order_item->getQuantity();
+        if (array_key_exists($order_item->id(), $other_order_item_usage)) {
+          $quantity_available -= $other_order_item_usage[$order_item->id()];
+        }
 
-      $form['shipment_item_builder'][$order_item->id()]['product'] = [
-        '#title' => $this->t('Product'),
-        '#markup' => $order_item->getPurchasedEntity()->label(),
-      ];
-      $form['shipment_item_builder'][$order_item->id()]['quantity'] = [
+        $form['shipment_item_builder'][$order_item->id()]['product'] = [
+          '#title' => $this->t('Product'),
+          '#markup' => $order_item->getPurchasedEntity()->label(),
+        ];
+        $form['shipment_item_builder'][$order_item->id()]['quantity'] = [
           '#type' => 'number',
           '#title' => $this->t('Quantity'),
           '#title_display' => 'invisible',
@@ -173,10 +174,11 @@ class ShipmentForm extends ContentEntityForm {
           '#quantity_used' => $quantity_used,
           '#default_value' => ($quantity_used != 0 && $quantity_used <= $quantity_available) ? $quantity_used : $quantity_available,
           '#suffix' => '<span>' . $this->t('Available:' . $quantity_available)  . '</span>',
-      ];
-      if ($quantity_used > $quantity_available) {
-        $this->messenger->addWarning($this->t('Quantity for ' . $order_item->getPurchasedEntity()->label() . ' is currently set to <strong>' . $quantity_used . '</strong>, but only <strong>' .
-          $quantity_available . '</strong> are available.'));
+        ];
+        if ($quantity_used > $quantity_available) {
+          $this->messenger->addWarning($this->t('Quantity for ' . $order_item->getPurchasedEntity()->label() . ' is currently set to <strong>' . $quantity_used . '</strong>, but only <strong>' .
+            $quantity_available . '</strong> are available.'));
+        }
       }
     }
 

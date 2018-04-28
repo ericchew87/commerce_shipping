@@ -131,10 +131,12 @@ class ShipmentListBuilder extends EntityListBuilder {
     $order_item_usage = [];
     /** @var \Drupal\commerce_order\Entity\OrderItemInterface $order_item */
     foreach ($order->getItems() as $order_item) {
-      $order_item_usage[$order_item->id()] = [
-        'quantity' => (int)$order_item->getQuantity(),
-        'item' => $order_item,
-      ];
+      if ($order_item->getPurchasedEntity()->hasField('weight')) {
+        $order_item_usage[$order_item->id()] = [
+          'quantity' => (int)$order_item->getQuantity(),
+          'item' => $order_item,
+        ];
+      }
     }
     /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface[] $shipments */
     $shipments = $this->load();
@@ -161,7 +163,7 @@ class ShipmentListBuilder extends EntityListBuilder {
     if (!empty($rows)) {
       $build['unshipped_items'] = [
         '#type' => 'details',
-        '#title' => $this->t('The following products have not been shipped:'),
+        '#title' => $this->t('Products without shipment'),
         '#open' => TRUE,
       ];
       $build['unshipped_items']['table'] =[
