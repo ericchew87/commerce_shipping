@@ -54,6 +54,8 @@ class ShipmentOrderProcessor implements OrderProcessorInterface {
       $shipping_profile = $first_shipment->getShippingProfile();
       list($shipments, $removed_shipments) = $this->packerManager->packToShipments($order, $shipping_profile, $shipments);
       foreach ($shipments as $shipment) {
+        // Reset packaging data so that shipping methods generate fresh rates.
+        $shipment->resetPackagingData();
         if ($shipment->hasTranslationChanges()) {
           $shipment->save();
         }
@@ -92,9 +94,16 @@ class ShipmentOrderProcessor implements OrderProcessorInterface {
    *   TRUE if the order should be repacked, FALSE otherwise.
    */
   protected function shouldRepack(OrderInterface $order, array $shipments) {
-    // Skip repacking if there's at least one shipment that was created outside
-    // of the packing process (via the admin UI, for example).
+
     foreach ($shipments as $shipment) {
+      // Force repackaging if OrderItem Quantity changes. This flag is set by the
+      // OrderItemSubscriber event subscriber.
+      if ($shipment->getData('needs_repackage')) {
+        $shipment->setData('needs_repackage', FALSE);
+        return TRUE;
+      }
+      // Skip repacking if there's at least one shipment that was created outside
+      // of the packing process (via the admin UI, for example).
       if (!$shipment->getData('owned_by_packer')) {
         return FALSE;
       }
