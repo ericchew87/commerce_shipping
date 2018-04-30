@@ -463,7 +463,24 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
   /**
    * {@inheritdoc}
    */
+  public function postSave(EntityStorageInterface $storage, $update = TRUE) {
+    parent::postSave($storage, $update);
+
+    // Ensure there's a back-reference on each package.
+    foreach ($this->getPackages() as $package) {
+      if ($package->shipment_id->isEmpty()) {
+        $package->shipment_id = $this->id();
+        $package->save();
+      }
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public static function postDelete(EntityStorageInterface $storage, array $entities) {
+    parent::postDelete($storage, $entities);
+
     $packages = [];
     /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
     foreach ($entities as $shipment) {
@@ -478,7 +495,7 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
           $order->save();
         }
       }
-      // remove delete all packages on this shipment.
+      // delete all packages on this shipment.
       foreach ($shipment->getPackages() as $package) {
         $packages[$package->id()] = $package;
       }
@@ -486,7 +503,6 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
     /** @var \Drupal\Core\Entity\EntityStorageInterface $package_storage */
     $package_storage = \Drupal::service('entity_type.manager')->getStorage('commerce_package');
     $package_storage->delete($packages);
-    parent::postDelete($storage, $entities);
   }
 
   /**

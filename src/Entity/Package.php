@@ -26,7 +26,12 @@ use Drupal\physical\Weight;
  *   handlers = {
  *     "storage" = "Drupal\commerce\CommerceContentEntityStorage",
  *     "access" = "Drupal\Core\Entity\EntityAccessControlHandler",
- *     "views_data" = "Drupal\views\EntityViewsData"
+ *     "views_data" = "Drupal\views\EntityViewsData",
+ *     "form" = {
+ *       "default" = "Drupal\Core\Entity\ContentEntityForm",
+ *       "edit" = "Drupal\Core\Entity\ContentEntityForm",
+ *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",
+ *     },
  *   },
  *   base_table = "commerce_package",
  *   admin_permission = "administer commerce_shipment",
@@ -35,6 +40,10 @@ use Drupal\physical\Weight;
  *     "id" = "package_id",
  *     "label" = "title",
  *     "uuid" = "uuid",
+ *   },
+ *   links = {
+ *     "edit-form" = "/admin/commerce/packages/{commerce_package}/edit",
+ *     "delete-form" = "/admin/commerce/packages/{commerce_package}/delete",
  *   },
  * )
  */
@@ -259,6 +268,13 @@ class Package extends ContentEntityBase implements PackageInterface {
    */
   public static function baseFieldDefinitions(EntityTypeInterface $entity_type) {
     $fields = parent::baseFieldDefinitions($entity_type);
+
+    // The shipment backreference, populated by Shipment::postSave().
+    $fields['shipment_id'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Shipment'))
+      ->setDescription(t('The parent shipment.'))
+      ->setSetting('target_type', 'commerce_shipment')
+      ->setReadOnly(TRUE);
 
     $fields['title'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Title'))
