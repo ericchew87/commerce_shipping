@@ -12,6 +12,22 @@ use Drupal\physical\Weight;
 interface PackageInterface extends ContentEntityInterface, EntityChangedInterface {
 
   /**
+   * Gets the parent shipment.
+   *
+   * @return \Drupal\commerce_shipping\Entity\ShipmentInterface|null
+   *   The shipment, or NULL.
+   */
+  public function getShipment();
+
+  /**
+   * Gets the parent shipment ID.
+   *
+   * @return int|null
+   *   The shipment ID, or NULL.
+   */
+  public function getShipmentId();
+
+  /**
    * Gets the package type.
    *
    * @return \Drupal\commerce_shipping\Plugin\Commerce\PackageType\PackageTypeInterface|null

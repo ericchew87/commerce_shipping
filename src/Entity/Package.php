@@ -55,6 +55,29 @@ class Package extends ContentEntityBase implements PackageInterface {
   /**
    * {@inheritdoc}
    */
+  protected function urlRouteParameters($rel) {
+    $uri_route_parameters = parent::urlRouteParameters($rel);
+    $uri_route_parameters['commerce_order'] = $this->getOrderId();
+    return $uri_route_parameters;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getShipment() {
+    return $this->get('shipment_id')->entity;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getShipmentId() {
+    return $this->get('shipment_id')->target_id;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function getTitle() {
     return $this->get('title')->value;
   }
