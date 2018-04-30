@@ -4,6 +4,12 @@ entity.commerce_shipment_type.add_form:
   appears_on:
     - entity.commerce_shipment_type.collection
 
+entity.commerce_shipment_package_type.add_form:
+  route_name: entity.commerce_shipment_package_type.add_form
+  title: 'Add shipment package type'
+  appears_on:
+    - entity.commerce_shipment_package_type.collection
+
 entity.commerce_shipping_method.add_form:
   route_name: entity.commerce_shipping_method.add_form
   title: 'Add shipping method'

@@ -70,6 +70,10 @@ commerce_shipping.commerce_shipment_type.*:
   type: commerce_config_entity_bundle
   label: 'Shipment type'
 
+commerce_shipping.commerce_shipment_package_type.*:
+  type: commerce_config_entity_bundle
+  label: 'Shipment package type'
+
 commerce_shipping.commerce_package_type.*:
   type: config_entity
   label: 'Package type'

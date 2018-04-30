@@ -30,6 +30,7 @@ class DefaultIndividualShipmentPackager extends ShipmentPackagerBase {
         $this->updatePackagedItems($shipment, [$item]);
         /** @var \Drupal\commerce_shipping\Entity\PackageInterface $package */
         $package = $this->entityTypeManager->getStorage('commerce_package')->create([
+          'type' => 'default',
           'items' => [$item],
           'title' => $shipment->getPackageType()->getLabel() . '-' . $i,
           'package_type' => $shipping_method->getDefaultPackageType()->getId(),

@@ -10,13 +10,12 @@ use Drupal\Core\Entity\EntityListBuilder;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
-use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Defines the list builder for shipments.
+ * Defines the list builder for packages.
  */
-class ShipmentListBuilder extends EntityListBuilder {
+class PackageListBuilder extends EntityListBuilder {
 
   /**
    * The current route match.
@@ -36,7 +35,7 @@ class ShipmentListBuilder extends EntityListBuilder {
   protected $entitiesKey = 'shipments';
 
   /**
-   * Constructs a new ShipmentListBuilder object.
+   * Constructs a new PackageListBuilder object.
    *
    * @param \Drupal\Core\Entity\EntityTypeInterface $entity_type
    *   The entity type definition.
@@ -70,16 +69,16 @@ class ShipmentListBuilder extends EntityListBuilder {
    * {@inheritdoc}
    */
   public function getFormId() {
-    return 'commerce_shipments';
+    return 'commerce_packages';
   }
 
   /**
    * {@inheritdoc}
    */
   protected function getEntityIds() {
-    $order_id = $this->routeMatch->getParameter('commerce_order');
+    $shipment_id = $this->routeMatch->getParameter('commerce_shipment');
     $query = $this->getStorage()->getQuery()
-      ->condition('order_id', $order_id)
+      ->condition('shipment_id', $shipment_id)
       ->sort($this->entityType->getKey('id'));
 
     // Only add the pager if a limit is specified.
@@ -94,10 +93,9 @@ class ShipmentListBuilder extends EntityListBuilder {
   */
   public function buildHeader() {
     $header = [
-      'label' => $this->t('Shipment'),
+      'label' => $this->t('Package'),
       'tracking' => $this->t('Tracking'),
-      'amount' => $this->t('Amount'),
-      'state' => $this->t('State'),
+      'declared_value' => $this->t('Declared Value'),
     ];
     return $header + parent::buildHeader();
   }
@@ -106,8 +104,8 @@ class ShipmentListBuilder extends EntityListBuilder {
   * {@inheritdoc}
   */
   public function buildRow(EntityInterface $entity) {
-    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $entity */
-    $amount = $entity->getAmount();
+    /** @var \Drupal\commerce_shipping\Entity\PackageInterface $entity */
+    $amount = $entity->getDeclaredValue();
     $currency = Currency::load($amount->getCurrencyCode());
 
     $row['label']['data'] = [
@@ -115,85 +113,9 @@ class ShipmentListBuilder extends EntityListBuilder {
       '#title' => $entity->label(),
     ] + $entity->toUrl()->toRenderArray();
     $row['tracking'] = $entity->getTrackingCode();
-    $row['amount'] = $this->numberFormatter->formatCurrency($amount->getNumber(), $currency);
-    $row['state'] = $entity->getState()->getLabel();
+    $row['declared_value'] = $this->numberFormatter->formatCurrency($amount->getNumber(), $currency);
 
     return $row + parent::buildRow($entity);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function getDefaultOperations(EntityInterface $entity) {
-    $operations = parent::getDefaultOperations($entity);
-
-    if ($entity->access('edit')) {
-      $operations['packages'] = [
-        'title' => $this->t('Packages'),
-        'weight' => 25,
-        'url' => Url::fromRoute('commerce_shipping.shipment_builder', ['order' => $entity->getOrderId(), 'shipment' => $entity->id()]),
-      ];
-    }
-
-    return $operations;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function render() {
-    $order_id = $this->routeMatch->getParameter('commerce_order');
-    $order = Order::load($order_id);
-    $order_item_usage = [];
-    /** @var \Drupal\commerce_order\Entity\OrderItemInterface $order_item */
-    foreach ($order->getItems() as $order_item) {
-      if ($order_item->getPurchasedEntity()->hasField('weight')) {
-        $order_item_usage[$order_item->id()] = [
-          'quantity' => (int)$order_item->getQuantity(),
-          'item' => $order_item,
-        ];
-      }
-    }
-    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface[] $shipments */
-    $shipments = $this->load();
-    foreach ($shipments as $shipment) {
-      foreach ($shipment->getItems() as $shipment_item) {
-        if (!empty($order_item_usage[$shipment_item->getOrderItemId()])) {
-          $order_item_usage[$shipment_item->getOrderItemId()]['quantity'] -= $shipment_item->getQuantity();
-        }
-      }
-    }
-
-    $build =  parent::render();
-
-    $rows = [];
-    foreach ($order_item_usage as $order_item_id => $values) {
-      if ($values['quantity'] > 0) {
-        $rows[$order_item_id] = [
-          'product' => $values['item']->getPurchasedEntity()->label(),
-          'quantity' => $values['quantity'],
-        ];
-      }
-    }
-
-    if (!empty($rows)) {
-      $build['unshipped_items'] = [
-        '#type' => 'details',
-        '#title' => $this->t('Products without shipment'),
-        '#open' => TRUE,
-      ];
-      $build['unshipped_items']['table'] =[
-        '#type' => 'table',
-        '#title' => $this->t('Un-Shipped Items'),
-        '#header' => [
-          $this->t('Product'),
-          $this->t('Quantity'),
-        ],
-        '#rows' => $rows,
-      ];
-    }
-
-    return $build;
   }
 
 }

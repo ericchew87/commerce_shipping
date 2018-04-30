@@ -24,27 +24,34 @@ use Drupal\physical\Weight;
  *     plural = "@count packages",
  *   ),
  *   handlers = {
+ *     "list_builder" = "Drupal\commerce_shipping\PackageListBuilder",
  *     "storage" = "Drupal\commerce\CommerceContentEntityStorage",
  *     "access" = "Drupal\Core\Entity\EntityAccessControlHandler",
  *     "views_data" = "Drupal\views\EntityViewsData",
  *     "form" = {
  *       "default" = "Drupal\Core\Entity\ContentEntityForm",
  *       "edit" = "Drupal\Core\Entity\ContentEntityForm",
- *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",
+ *     },
+ *     "route_provider" = {
+ *       "default" = "Drupal\Core\Entity\Routing\AdminHtmlRouteProvider",
  *     },
  *   },
  *   base_table = "commerce_package",
- *   admin_permission = "administer commerce_shipment",
+ *   admin_permission = "administer commerce_package",
  *   fieldable = TRUE,
  *   entity_keys = {
  *     "id" = "package_id",
+ *     "bundle" = "type",
  *     "label" = "title",
  *     "uuid" = "uuid",
  *   },
  *   links = {
- *     "edit-form" = "/admin/commerce/packages/{commerce_package}/edit",
- *     "delete-form" = "/admin/commerce/packages/{commerce_package}/delete",
+ *     "canonical" = "/admin/commerce/orders/{commerce_order}/shipments/{commerce_shipment}/packages/{commerce_package}",
+ *     "collection" = "/admin/commerce/orders/{commerce_order}/shipments/{commerce_shipment}/packages",
+ *     "edit-form" = "/admin/commerce/orders/{commerce_order}/shipments/{commerce_shipment}/packages/{commerce_package}/edit",
  *   },
+ *   bundle_entity_type = "commerce_shipment_package_type",
+ *   field_ui_base_route = "entity.commerce_shipment_package_type.edit_form",
  * )
  */
 
@@ -57,7 +64,8 @@ class Package extends ContentEntityBase implements PackageInterface {
    */
   protected function urlRouteParameters($rel) {
     $uri_route_parameters = parent::urlRouteParameters($rel);
-    $uri_route_parameters['commerce_order'] = $this->getOrderId();
+    $uri_route_parameters['commerce_order'] = $this->getShipment()->getOrderId();
+    $uri_route_parameters['commerce_shipment'] = $this->getShipmentId();
     return $uri_route_parameters;
   }
 
@@ -333,7 +341,7 @@ class Package extends ContentEntityBase implements PackageInterface {
       ->setLabel(t('Weight'))
       ->setRequired(TRUE)
       ->setSetting('measurement_type', 'weight')
-      ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('form', FALSE)
       ->setDisplayConfigurable('view', TRUE);
 
     $fields['declared_value'] = BaseFieldDefinition::create('commerce_price')
@@ -348,6 +356,10 @@ class Package extends ContentEntityBase implements PackageInterface {
       ->setDescription(t('The package tracking code.'))
       ->setDefaultValue('')
       ->setSetting('max_length', 255)
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => -5,
+      ])
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
