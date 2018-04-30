@@ -6,7 +6,7 @@
         connectWith: '.shipment-builder__area',
 
         /**
-         * Updates the layout with the new position of the block.
+         * Updates what Package a ShipmentItem belongs to.
          *
          * @param {jQuery.Event} event
          *   The jQuery Event object.
@@ -14,8 +14,6 @@
          *   An object containing information about the item being sorted.
          */
         update(event, ui) {
-          // url/order_id/shipment_id/item_id/package_from/packaage_to
-          // Check if the region from the event and region for the item match.
           const itemRegion = ui.item.closest('.shipment-builder__area');
           if (event.target === itemRegion[0]) {
             const shipmentItemArea = 'shipment-item-area';
@@ -31,8 +29,8 @@
                 packageFrom,
                 packageTo,
               ]
-                  .filter(element => element !== undefined)
-                  .join('/'),
+                .filter(element => element !== undefined)
+                .join('/'),
             }).execute();
           }
         },

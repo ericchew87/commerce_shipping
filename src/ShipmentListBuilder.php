@@ -5,13 +5,11 @@ namespace Drupal\commerce_shipping;
 use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_price\Entity\Currency;
 use Drupal\commerce_price\NumberFormatterFactoryInterface;
-use Drupal\commerce_shipping\Entity\ShipmentInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityListBuilder;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
-use Drupal\views\Views;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**

@@ -15,7 +15,6 @@ use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\physical\Weight;
 use Drupal\profile\Entity\ProfileInterface;
-use Drupal\commerce_shipping\Entity\PackageInterface;
 
 /**
  * Defines the shipment entity class.
@@ -319,6 +318,9 @@ class Shipment extends ContentEntityBase implements ShipmentInterface {
     return $this;
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function resetPackagingData() {
     $this->entityTypeManager()->getStorage('commerce_package')->delete($this->getPackages());
     $this->setPackages([]);

@@ -85,19 +85,6 @@ class ShipmentBuilderForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, OrderInterface $order = NULL, ShipmentInterface $shipment = NULL) {
 
-    $this->shipment = clone $shipment;
-
-    $temp_store = $this->getTempstore();
-    if (empty($temp_store->get('shipment'))) {
-      $temp_store->set('shipment', $shipment);
-      $temp_store->set('packages', $shipment->getPackages());
-    }
-    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
-    $shipment = $temp_store->get('shipment');
-    $order_id = $shipment->getOrderId();
-
-    $shipment_id = $shipment->id() ? $shipment->id() : 'new';
-
     $package_types = $this->packageTypeManager->getDefinitions();
     $package_types = array_map(function ($package_type) {
       return $package_type['label'];
@@ -128,146 +115,7 @@ class ShipmentBuilderForm extends FormBase {
       '#options' => $package_types,
     ];
 
-    $form['shipment_builder'] = [
-      '#type' => 'container',
-      '#attributes' => [
-        'id' => [
-          'shipment-builder',
-        ],
-      ],
-    ];
-
-    $form['shipment_builder']['shipment_items'] = [
-      '#type' => 'container',
-      '#attributes' => [
-        'class' => [
-          'shipment-builder__area',
-          'shipment-items'
-        ],
-        'data-layout-update-url' => '/shipment_builder/move/'.$order_id.'/'.$shipment_id,
-      ],
-    ];
-
-    $form['shipment_builder']['shipment_items']['title'] = [
-      '#type' => 'html_tag',
-      '#tag' => 'h3',
-      '#value' => t('Un-Packaged Items'),
-      '#attributes' => [
-        'class' => ['shipment-items-title'],
-      ],
-    ];
-
-    $form['shipment_builder']['packages'] = [
-      '#type' => 'container',
-      '#attributes' => [
-        'class' => [
-          'package-area',
-        ],
-        'data-layout-update-url' => '/shipment_builder/move/'.$order_id.'/'.$shipment_id,
-      ],
-    ];
-
-    $unpackaged_items = [];
-    foreach ($shipment->getItems() as $item) {
-      $quantity = (int)$item->getQuantity();
-      $id = $item->getOrderItemId();
-      $unpackaged_items[$id.'-'.$quantity]['item'] = $item;
-      if (empty($unpackaged_items[$id.'-'.$quantity]['quantity'])) {
-        $unpackaged_items[$id.'-'.$quantity]['quantity'] = 1;
-      } else {
-        $unpackaged_items[$id.'-'.$quantity]['quantity']++;
-      }
-    }
-
-    /** @var \Drupal\commerce_shipping\Entity\PackageInterface[] $packages */
-    $packages = $temp_store->get('packages');
-    foreach ($packages as $delta => $package) {
-
-      $form['shipment_builder']['packages'][$delta] = [
-        '#type' => 'container',
-        '#attributes' => [
-          'class' => ['package'],
-        ],
-      ];
-
-      $form['shipment_builder']['packages'][$delta]['package_header'] = [
-        '#type' => 'container',
-        '#attributes' => [
-          'class' => ['package-header'],
-        ],
-      ];
-
-      $form['shipment_builder']['packages'][$delta]['package_header']['title'] = [
-        '#type' => 'html_tag',
-        '#tag' => 'h3',
-        '#value' => $package->getTitle(),
-        '#attributes' => [
-          'class' => ['package-title'],
-        ],
-      ];
-
-      $form['shipment_builder']['packages'][$delta]['package_header']['remove-' . $delta] = [
-        '#type' => 'submit',
-        '#value' => t('Remove Package ' . $delta),
-        '#package_delta' => $delta,
-        '#submit' => [[$this, 'removePackageSubmit']],
-        '#attributes' => [
-          'class' => [
-            'remove-package',
-          ],
-        ],
-        '#ajax' => [
-          'callback' => [$this, 'ajaxRefresh'],
-          'wrapper' => 'shipment-builder',
-          'progress' => [
-            'type' => 'fullscreen',
-          ],
-        ],
-      ];
-
-      $form['shipment_builder']['packages'][$delta]['items'] = [
-        '#type' => 'container',
-        '#attributes' => [
-          'data-package-id' => $delta,
-          'class' => ['shipment-builder__area'],
-        ],
-      ];
-
-      foreach ($package->getItems() as $item) {
-        $id = $item->getOrderItemId();
-        $quantity = (int)$item->getQuantity();
-        $unpackaged_items[$id.'-'.$quantity]['quantity']--;
-
-        $form['shipment_builder']['packages'][$delta]['items'][] = [
-          '#type' => 'html_tag',
-          '#tag' => 'p',
-          '#value' => t($item->getTitle() . ' x' . $quantity),
-          '#attributes' => [
-            'data-shipment-item-id' => $id . '-' . $quantity,
-            'class' => ['draggable', 'shipment-item'],
-          ],
-        ];
-      }
-    }
-
-    foreach ($shipment->getItems() as $item) {
-      $id = $item->getOrderItemId();
-      $quantity = (int)$item->getQuantity();
-      if ($unpackaged_items[$id.'-'.$quantity]['quantity'] > 0) {
-        $form['shipment_builder']['shipment_items'][] = [
-          '#type' => 'container',
-          '#markup' => $item->getTitle() . ' x' . $quantity,
-          '#attributes' => [
-            'data-shipment-item-id' => $id . '-' . $quantity,
-            'class' => [
-              'draggable',
-              'shipment-item'
-            ],
-          ],
-        ];
-        $unpackaged_items[$id . '-' . $quantity]['quantity']--;
-      }
-    }
+    $form += $this->buildShipmentBuilder($shipment);
 
     $form['actions']['#type'] = 'actions';
     $form['actions']['submit_recalculate'] = array(
@@ -293,6 +141,166 @@ class ShipmentBuilderForm extends FormBase {
     $form['#attached']['library'][] = 'commerce_shipping/shipment_builder';
 
     return $form;
+  }
+
+  public function buildShipmentBuilder(ShipmentInterface $shipment) {
+    $this->shipment = clone $shipment;
+
+    $temp_store = $this->getTempstore();
+    if (empty($temp_store->get('shipment'))) {
+      $temp_store->set('shipment', $shipment);
+      $temp_store->set('packages', $shipment->getPackages());
+    }
+
+    $output = [];
+    $temp_store = $this->getTempstore();
+    /** @var \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment */
+    $shipment = $temp_store->get('shipment');
+    $shipment_id = $shipment->id() ? $shipment->id() : 'new';
+    $order_id = $shipment->getOrderId();
+
+    $output['shipment_builder'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'id' => [
+          'shipment-builder',
+        ],
+      ],
+    ];
+
+    $output['shipment_builder']['shipment_items'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => [
+          'shipment-builder__area',
+          'shipment-items'
+        ],
+        'data-layout-update-url' => '/shipment_builder/move/'.$order_id.'/'.$shipment_id,
+      ],
+    ];
+
+    $output['shipment_builder']['shipment_items']['title'] = [
+      '#type' => 'html_tag',
+      '#tag' => 'h3',
+      '#value' => t('Un-Packaged Items'),
+      '#attributes' => [
+        'class' => ['shipment-items-title'],
+      ],
+    ];
+
+    $output['shipment_builder']['packages'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => [
+          'package-area',
+        ],
+        'data-layout-update-url' => '/shipment_builder/move/'.$order_id.'/'.$shipment_id,
+      ],
+    ];
+
+    $unpackaged_items = [];
+    foreach ($shipment->getItems() as $item) {
+      $quantity = (int)$item->getQuantity();
+      $id = $item->getOrderItemId();
+      $unpackaged_items[$id.'-'.$quantity]['item'] = $item;
+      if (empty($unpackaged_items[$id.'-'.$quantity]['quantity'])) {
+        $unpackaged_items[$id.'-'.$quantity]['quantity'] = 1;
+      } else {
+        $unpackaged_items[$id.'-'.$quantity]['quantity']++;
+      }
+    }
+
+    /** @var \Drupal\commerce_shipping\Entity\PackageInterface[] $packages */
+    $packages = $temp_store->get('packages');
+    foreach ($packages as $delta => $package) {
+
+      $output['shipment_builder']['packages'][$delta] = [
+        '#type' => 'container',
+        '#attributes' => [
+          'class' => ['package'],
+        ],
+      ];
+
+      $output['shipment_builder']['packages'][$delta]['package_header'] = [
+        '#type' => 'container',
+        '#attributes' => [
+          'class' => ['package-header'],
+        ],
+      ];
+
+      $output['shipment_builder']['packages'][$delta]['package_header']['title'] = [
+        '#type' => 'html_tag',
+        '#tag' => 'h3',
+        '#value' => $package->getTitle(),
+        '#attributes' => [
+          'class' => ['package-title'],
+        ],
+      ];
+
+      $output['shipment_builder']['packages'][$delta]['package_header']['remove-' . $delta] = [
+        '#type' => 'submit',
+        '#value' => t('Remove Package ' . $delta),
+        '#package_delta' => $delta,
+        '#submit' => [[$this, 'removePackageSubmit']],
+        '#attributes' => [
+          'class' => [
+            'remove-package',
+          ],
+        ],
+        '#ajax' => [
+          'callback' => [$this, 'ajaxRefresh'],
+          'wrapper' => 'shipment-builder',
+          'progress' => [
+            'type' => 'fullscreen',
+          ],
+        ],
+      ];
+
+      $output['shipment_builder']['packages'][$delta]['items'] = [
+        '#type' => 'container',
+        '#attributes' => [
+          'data-package-id' => $delta,
+          'class' => ['shipment-builder__area'],
+        ],
+      ];
+
+      foreach ($package->getItems() as $item) {
+        $id = $item->getOrderItemId();
+        $quantity = (int)$item->getQuantity();
+        $unpackaged_items[$id.'-'.$quantity]['quantity']--;
+
+        $output['shipment_builder']['packages'][$delta]['items'][] = [
+          '#type' => 'html_tag',
+          '#tag' => 'p',
+          '#value' => t($item->getTitle() . ' x' . $quantity),
+          '#attributes' => [
+            'data-shipment-item-id' => $id . '-' . $quantity,
+            'class' => ['draggable', 'shipment-item'],
+          ],
+        ];
+      }
+    }
+
+    foreach ($shipment->getItems() as $item) {
+      $id = $item->getOrderItemId();
+      $quantity = (int)$item->getQuantity();
+      if ($unpackaged_items[$id.'-'.$quantity]['quantity'] > 0) {
+        $output['shipment_builder']['shipment_items'][] = [
+          '#type' => 'container',
+          '#markup' => $item->getTitle() . ' x' . $quantity,
+          '#attributes' => [
+            'data-shipment-item-id' => $id . '-' . $quantity,
+            'class' => [
+              'draggable',
+              'shipment-item'
+            ],
+          ],
+        ];
+        $unpackaged_items[$id . '-' . $quantity]['quantity']--;
+      }
+    }
+
+    return $output;
   }
 
   /**
