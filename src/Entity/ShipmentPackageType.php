@@ -19,9 +19,9 @@ use Drupal\commerce\Entity\CommerceBundleEntityBase;
  *   handlers = {
  *     "list_builder" = "Drupal\commerce_shipping\ShipmentPackageTypeListBuilder",
  *     "form" = {
- *       "add" = "Drupal\commerce_shipping\Form\ShipmentTypeForm",
- *       "edit" = "Drupal\commerce_shipping\Form\ShipmentTypeForm",
- *       "delete" = "Drupal\commerce_shipping\Form\ShipmentTypeDeleteForm"
+ *       "add" = "Drupal\commerce_shipping\Form\ShipmentPackageTypeForm",
+ *       "edit" = "Drupal\commerce_shipping\Form\ShipmentPackageTypeForm",
+ *       "delete" = "Drupal\commerce_shipping\Form\ShipmentPackageTypeDeleteForm"
  *     },
  *     "route_provider" = {
  *       "default" = "Drupal\Core\Entity\Routing\DefaultHtmlRouteProvider",
