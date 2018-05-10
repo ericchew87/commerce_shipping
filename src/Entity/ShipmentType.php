@@ -38,6 +38,7 @@ use Drupal\commerce\Entity\CommerceBundleEntityBase;
  *   config_export = {
  *     "id",
  *     "label",
+ *     "shipmentPackageType",
  *     "uuid",
  *     "traits",
  *   },
@@ -50,5 +51,27 @@ use Drupal\commerce\Entity\CommerceBundleEntityBase;
  * )
  */
 class ShipmentType extends CommerceBundleEntityBase implements ShipmentTypeInterface {
+
+  /**
+   * The shipment package type ID.
+   *
+   * @var string
+   */
+  protected $shipmentPackageType;
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getShipmentPackageTypeId() {
+    return $this->shipmentPackageType;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setShipmentPackageTypeId($shipment_package_type_id) {
+    $this->shipmentPackageType = $shipment_package_type_id;
+    return $this;
+  }
 
 }

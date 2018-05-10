@@ -69,6 +69,10 @@ commerce_shipping_method_configuration:
 commerce_shipping.commerce_shipment_type.*:
   type: commerce_config_entity_bundle
   label: 'Shipment type'
+  mapping:
+    shipmentPackageType:
+      type: string
+      label: 'Shipment package type'
 
 commerce_shipping.commerce_shipment_package_type.*:
   type: commerce_config_entity_bundle

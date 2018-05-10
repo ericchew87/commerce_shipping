@@ -25,7 +25,7 @@ class DefaultAllInOneShipmentPackager extends ShipmentPackagerBase {
     $items = $shipment->getData('unpackaged_items');
     /** @var \Drupal\commerce_shipping\Entity\PackageInterface $package */
     $package = $this->entityTypeManager->getStorage('commerce_package')->create([
-      'type' => 'default',
+      'type' => $this->getShipmentPackageType($shipment),
       'items' => $items,
       'title' => $shipment->getPackageType()->getLabel(),
       'package_type' => $shipping_method->getDefaultPackageType()->getId(),

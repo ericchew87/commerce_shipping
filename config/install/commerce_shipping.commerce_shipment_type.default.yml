@@ -3,4 +3,5 @@ status: true
 dependencies: {  }
 id: default
 label: Default
+shipmentPackageType: Default
 traits: {  }

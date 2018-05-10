@@ -40,7 +40,7 @@ class ManualShipmentPackager extends ShipmentPackagerBase {
             $item = $this->updateItemQuantity($item, $packaging_option['max']);
             /** @var \Drupal\commerce_shipping\Entity\PackageInterface $package */
             $package = $this->entityTypeManager->getStorage('commerce_package')->create([
-              'type' => 'default',
+              'type' => $this->getShipmentPackageType($shipment),
               'items' => [$item],
               'title' => $package_type->getLabel(),
               'package_type' => $package_type->getId(),
@@ -57,7 +57,7 @@ class ManualShipmentPackager extends ShipmentPackagerBase {
           if ($item_qty > 0 && $item_qty >= $packaging_option['min'] && $item_qty <= $packaging_option['max']) {
             $item = $this->updateItemQuantity($item, $item_qty);
             $package = $this->entityTypeManager->getStorage('commerce_package')->create([
-              'type' => 'default',
+              'type' => $this->getShipmentPackageType($shipment),
               'items' => [$item],
               'title' => $package_type->getLabel(),
               'package_type' => $package_type->getId(),

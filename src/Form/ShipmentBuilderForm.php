@@ -436,6 +436,23 @@ class ShipmentBuilderForm extends FormBase {
   }
 
   /**
+   * Gets the shipment package type for a shipment.
+   *
+   * @param \Drupal\commerce_shipping\Entity\ShipmentInterface $shipment
+   *   The shipment.
+   *
+   * @return string
+   *   The shipment package type.
+   */
+  protected function getShipmentPackageType(ShipmentInterface $shipment) {
+    $shipment_type_storage = $this->entityTypeManager->getStorage('commerce_shipment_type');
+    /** @var \Drupal\commerce_shipping\Entity\ShipmentTypeInterface $shipment_type */
+    $shipment_type = $shipment_type_storage->load($shipment->bundle());
+
+    return $shipment_type->getShipmentPackageTypeId();
+  }
+
+  /**
    * AJAX refresh for rebuilding the ShipmentBuilder form.
    *
    * @param array $form
@@ -461,6 +478,7 @@ class ShipmentBuilderForm extends FormBase {
 
     /** @var \Drupal\commerce_shipping\Entity\PackageInterface $package */
     $package = $this->entityTypeManager->getStorage('commerce_package')->create([
+      'type' => $this->getShipmentPackageType($this->shipment),
       'items' => [],
       'title' => $package_type->getLabel(),
       'package_type' => $package_type->getId(),
@@ -485,4 +503,5 @@ class ShipmentBuilderForm extends FormBase {
     $temp_store->set('packages', $packages);
     $form_state->setRebuild();
   }
+
 }
